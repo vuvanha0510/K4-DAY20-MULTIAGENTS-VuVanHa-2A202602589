@@ -17,9 +17,9 @@
 
 > Dự đoán điều kiện nào đạt điểm cao nhất trên **tác vụ đánh giá** và vì sao. Nêu căn cứ từ phân loại lỗi (mục 4) và từ tài liệu tham khảo. Điền cả ba dòng; `verify_freeze.py` kiểm tra điều này.
 
-- H1 (subagents so với baseline):
-- H2 (skills-auto so với baseline):
-- H3 (tác vụ học so với tác vụ đánh giá):
+- H1 (subagents so với baseline): `subagents` sẽ không vượt `baseline` trên điểm trung bình. Căn cứ: trên 3 tác vụ học, `baseline` đạt 16/18 check kỹ thuật (chỉ hụt 2) trong khi `subagents` mới đạt 7/12; hai điều kiện đều 0/9 và 0/6 check quy ước `rule_`. Lợi ích của việc chia việc bị bù bằng chi phí token cao hơn và bối cảnh bị mất khi bàn giao.
+- H2 (skills-auto so với baseline): `skills-auto` sẽ không cải thiện điểm, vì skill do curator sinh ra toàn quy về nhóm lỗi E (quy ước tổ chức không có trong đề) chứ không giải quyết nhóm lỗi kỹ thuật chiếm đa số; đồng thời `skills_read` có thể bằng 0 vì `description` không nêu đúng tình huống kích hoạt.
+- H3 (tác vụ học so với tác vụ đánh giá): điểm trên tác vụ đánh giá sẽ thấp hơn tác vụ học ở cả ba điều kiện, vì quy ước `rule_` mới của tác vụ đánh giá chưa từng xuất hiện trong dữ liệu curator sinh skill (tự diễn giải: skill viết từ vết tác vụ học không chứa quy ước đánh giá).
 
 ## 3. Làm quen Deep Agents (Phần 0.3)
 
