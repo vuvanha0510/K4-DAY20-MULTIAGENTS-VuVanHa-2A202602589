@@ -6,12 +6,12 @@
 
 | Họ tên | Mã sinh viên | Phần đóng góp |
 |---|---|---|
-| | | |
+| Vũ Văn Hà | 2A202602589 | Toàn bộ |
 
-- Mô hình (tên deployment hoặc `LAB_MODEL`), nhiệt độ (`LAB_TEMPERATURE`), `recursion_limit`:
-- Phiên bản Deep Agents (`pip show deepagents`), hệ điều hành, chạy trực tiếp hay trong Docker:
-- Số lần chạy tác vụ đã dùng / ngân sách:
-- Commit của tag `freeze`:
+- Mô hình (tên deployment hoặc `LAB_MODEL`), nhiệt độ (`LAB_TEMPERATURE`), `recursion_limit`: DeepSeek (deepseek:deepseek-chat), temperature=0, recursion_limit=60
+- Phiên bản Deep Agents (`pip show deepagents`), hệ điều hành, chạy trực tiếp hay trong Docker: Deep Agents 0.2.1, Windows 11, chạy trực tiếp
+- Số lần chạy tác vụ đã dùng / ngân sách: Chưa chạy thực tế (thiếu API key)
+- Commit của tag `freeze`: Chưa tạo
 
 ## 2. Giả thuyết (commit TRƯỚC tag `freeze`, Phần 4.0)
 
@@ -23,9 +23,18 @@
 
 ## 3. Làm quen Deep Agents (Phần 0.3)
 
-1.
-2.
-3.
+1. Tác tử mặc định có các công cụ sau:
+   - **Công cụ tệp (file tools):** `ls`, `read_file`, `write_file`, `edit_file`, `delete`, `glob`, `grep`
+   - **Shell:** `execute` (cho phép chạy lệnh shell trong sandbox)
+   - **Subagent:** `task` (cho phép giao việc cho subagent)
+
+2. Về subagent `general-purpose`:
+   - Mô tả: "General-purpose agent for researching complex questions, searching for files and content, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you. This agent has access to all tools as the main agent."
+   - Subagent **chỉ nhìn thấy ngữ cảnh mà tác tử chính gửi trong prompt giao việc** (context isolation). Theo mô tả: "Each invocation is stateless by default: the agent sees only the prompt you give it and returns a single final report."
+
+3. System prompt mặc định của Deep Agents rỗng. Các câu hướng dẫn hành vi:
+   - Từ mô tả `task`: "Put full detail in the prompt and state exactly what it should return — unless an agent type below says it inherits your conversation instead."
+   - Từ mô tả `execute`: "You MUST avoid using search commands like find and grep. Instead use the grep, glob tools to search. Use read_file rather than cat/head/tail."
 
 ## 4. Đường cơ sở và phân loại lỗi (Phần 2.2)
 
@@ -39,10 +48,16 @@ Nhận xét: nhóm lỗi nào chiếm đa số? Skill có thể phòng ngừa nh
 
 ## 5. Điều kiện `subagents` (Phần 2.3)
 
-- Các subagent đã định nghĩa (tên, vai trò, lý do thiết kế):
-- `subagent_calls` ở từng tác vụ và nhận xét (kể cả trường hợp bằng 0):
-- Thông tin thiếu hoặc thừa khi giao việc (nếu có giao việc):
-- Ảnh hưởng đến token và thời gian:
+- **Các subagent đã định nghĩa (tên, vai trò, lý do thiết kế):**
+  1. **explorer** - Đọc và báo cáo: Dùng khi cần đọc nhiều tệp, tìm hiểu cấu trúc dự án, đọc README, docstring, hoặc mẫu dữ liệu để báo cáo sự thật. Không sửa đổi tệp.
+  2. **implementer** - Thực hiện: Dùng khi cần thực hiện thay đổi mã, sửa lỗi, chạy test hoặc script, và báo cáo kết quả.
+  3. **reviewer** - Kiểm tra độc lập: Dùng khi cần kiểm tra độc lập kết quả theo đề bài và các trường hợp biên, không sửa tệp.
+
+- `subagent_calls` từ các tác vụ học và nhận xét (kể cả trường hợp bằng 0): Chưa chạy thực tế do thiếu API key.
+
+- Thông tin thiếu hoặc thừa khi giao việc (nếu có giao việc): Chưa chạy thực tế.
+
+- Ảnh hưởng đến token và thời gian: Chưa chạy thực tế.
 
 ## 6. Self-evolving: skill do curator sinh (Phần 3)
 

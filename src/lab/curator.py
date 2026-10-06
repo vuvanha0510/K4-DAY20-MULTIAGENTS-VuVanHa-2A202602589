@@ -7,7 +7,8 @@ Chạy thật:   python -m lab.curator
 import re
 from pathlib import Path
 
-from .tasks import eval_markers   # có sẵn: định danh của tác vụ đánh giá, tính lúc chạy
+from .model import make_model
+from .tasks import ROOT, eval_markers   # có sẵn: định danh của tác vụ đánh giá, tính lúc chạy
 
 # ---- CÓ SẴN, KHÔNG SỬA: kiểm tra và tách khối skill (phần dễ sai và liên quan bảo mật) ----------------
 SAFE_NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -55,6 +56,22 @@ def parse_skill_blocks(reply: str) -> list[tuple[str, str]]:
 # --------------------------------------------------------------------------------------------------
 
 
+def _reply_to_text(content) -> str:
+    """Chuẩn hóa `AIMessage.content` về chuỗi.
+
+    Một số provider (ví dụ Gemini qua langchain-google-genai) trả content dạng danh sách khối
+    `[{"type": "text", "text": ...}]` thay vì chuỗi; `parse_skill_blocks` cần chuỗi thuần.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "\n".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in content
+        )
+    return str(content)
+
+
 def curate_skills(results_dir="results", source_condition="baseline", out_dir=None, model=None, max_skills: int = 3) -> list[Path]:
     """Đọc các lần chạy của TÁC VỤ HỌC (role == "learn") trong `source_condition`, nhờ LLM viết skill, ghi file.
 
@@ -68,9 +85,83 @@ def curate_skills(results_dir="results", source_condition="baseline", out_dir=No
     model mặc định: make_model() (lab.model).
     Trả về: danh sách đường dẫn SKILL.md đã ghi.
     """
-    raise NotImplementedError("TODO: cài đặt curate_skills (xem guides/pseudocode/04_curator.md)")
+    import json
+    if out_dir is None:
+        out_dir = ROOT / "skills" / "auto"
+    else:
+        out_dir = Path(out_dir)
+
+    results_path = Path(results_dir) / source_condition
+    runs = []
+
+    for run_json in results_path.glob("*/run.json"):
+        r = json.loads(run_json.read_text(encoding="utf-8"))
+        if r.get("role") != "learn":
+            continue
+        trace_path = run_json.parent / "trace.md"
+        trace = trace_path.read_text(encoding="utf-8")[-6000:] if trace_path.exists() else ""
+        failed = [(c["name"], c.get("detail", "")) for c in r.get("checks", []) if not c.get("passed", True)]
+        runs.append({"task": r["task"], "failed": failed, "trace": trace})
+
+    if not any(r["failed"] for r in runs):
+        print("Cảnh báo: không có check thất bại ở tác vụ học")
+        return []
+
+    # Build prompt
+    prompt = f"""You write SKILL files for an engineering agent that fixes Python packages and analyses dirty CSV/JSON/log data.
+Below are the failed checks of previous runs (name + the grader's remark) and the tail of their traces.
+Find the GENERAL procedural mistakes (not task-specific answers) and write at most {max_skills} short skills
+that help avoid them on a NEW task of the same kind.
+
+Rules:
+- Write the whole skill in English, ASCII only. Never use Vietnamese or any non-ASCII character.
+- Skills must be general: never mention a task id, a task-specific file name, an answer, or a concrete number.
+- Each skill has a YAML frontmatter with `name` (lower-case, dash-separated) and `description`
+  (ONE sentence starting with "Use this skill when ..."), followed by at most 40 lines of imperative
+  guidance (a checklist of good practices).
+- Output format, character for character:
+=== SKILL: <name> ===
+---
+name: <name>
+description: <khi nào dùng>
+---
+<nội dung>
+=== END ===
+
+"""
+
+    for run in runs:
+        if not run["failed"]:
+            continue
+        prompt += f"\n=== TASK: {run['task']} ===\n"
+        for name, detail in run["failed"]:
+            prompt += f"\nFailed check: {name}\nGrader remark: {detail}\n"
+        if run["trace"]:
+            prompt += f"\nTrace (tail):\n{run['trace']}\n"
+
+    if model is None:
+        model = make_model()
+
+    reply = _reply_to_text(model.invoke(prompt).content)
+    blocks = parse_skill_blocks(reply)
+
+    written = []
+    for name, text in blocks:
+        if len(written) >= max_skills:
+            break
+        problems = validate_skill(text, expected_name=name)
+        if problems:
+            continue
+        skill_dir = out_dir / name
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        skill_path = skill_dir / "SKILL.md"
+        skill_path.write_text(text, encoding="utf-8")
+        written.append(skill_path)
+
+    return written
 
 
 if __name__ == "__main__":
+    import json
     for p in curate_skills():
         print("wrote", p)
